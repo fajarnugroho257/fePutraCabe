@@ -65,20 +65,24 @@ function Laporan() {
     setBlur(true);
     const fectData = async () => {
       //fetching
-      const response = await api.post(endPoint, params, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
-      //get response data
-      const data = await response.data.data.data;
-      // console.log(data);
-      if (response.status === 200) {
-        setBlur(false);
+      try {
+        const response = await api.post(endPoint, params, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        });
+        //get response data
+        const data = await response.data.data.data;
+        // console.log(data);
+        if (response.status === 200) {
+          setBlur(false);
+        }
+        setDatas(data);
+      } catch (error) {
+        console.log(error.message);
       }
-      setDatas(data);
     };
     fectData();
   }, [dateFrom, dateTo, supName]);

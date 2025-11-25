@@ -17,25 +17,26 @@ function Login() {
       username: usermail,
       password: password,
     };
-    const endPoint = "https://demoapps.online/be-putra-cabe/fe/api/login-api";
-    // const endPoint = "http://127.0.0.1:8000/fe/api/login-api";
-    // Contoh autentikasi
-    const response = await fetch(endPoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data), // Mengonversi objek menjadi string JSON
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-
-      // Simpan token JWT
-      setToken(data.token);
-
-      // Redirect ke dashboard
-      navigate("/dashboard");
-    } else {
-      alert("Login gagal!");
+    // const endPoint = "https://sameeramart.com/be-putra-cabe/fe/api/login-api";
+    const endPoint = "http://127.0.0.1:8000/fe/api/login-api";
+    // login
+    try {
+      const response = await fetch(endPoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data), // Mengonversi objek menjadi string JSON
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Simpan token JWT
+        setToken(data.token);
+        // Redirect ke dashboard
+        navigate("/dashboard");
+      } else {
+        alert("Login gagal!");
+      }
+    } catch (error) {
+      alert("Terjadi error: " + error.message);
     }
   };
 

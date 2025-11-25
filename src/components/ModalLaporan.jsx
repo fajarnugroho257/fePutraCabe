@@ -19,6 +19,10 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
   const [datasPengBarang, setDatasPengBarang] = useState([]);
   //
   const [bbnKardus, setBbnKardus] = useState([]);
+  // sald0
+  const [uang, setUang] = useState();
+  const [ttlBebanLain, setTtlBebanLain] = useState(0);
+  const [grandTotalPembelianCash, setGrandTotalPembelianCash] = useState(0);
   //
   const endPoint = "/detail-Laporan";
   //
@@ -31,39 +35,55 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
     const fectData = async () => {
       const toastId = toast.loading("Getting data...");
       //fetching
-      const response = await api.post(endPoint, params, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
-      // console.log(response.data);
-      //get response data
-      const pembelian = await response.data.data.pembelian;
-      const pengiriman = await response.data.data.pengiriman;
-      const pemBarang = await response.data.groupBarang.pemBarang;
-      const pengBarang = await response.data.groupBarang.pengBarang;
-      const resbbnKardus = await response.data.data.bbnKardus;
-      // console.log(resbbnKardus);
-      //
-      if (response.status === 200) {
-        toast.update(toastId, {
-          render: "Getting data successfully!",
-          type: "success",
-          isLoading: false,
-          autoClose: 3000,
+      try {
+        const response = await api.post(endPoint, params, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
         });
-        setBlur(false);
+        // console.log(response.data);
+        //get response data
+        const pembelian = await response.data.data.pembelian;
+        const pengiriman = await response.data.data.pengiriman;
+        const pemBarang = await response.data.groupBarang.pemBarang;
+        const pengBarang = await response.data.groupBarang.pengBarang;
+        const resbbnKardus = await response.data.data.bbnKardus;
+        const saldoBe = await response.data.data.saldo_be;
+        const totalBebanLain = await response.data.data.totalBebanLain;
+        // console.log(resbbnKardus);
+        //
+        if (response.status === 200) {
+          toast.update(toastId, {
+            render: "Getting data successfully!",
+            type: "success",
+            isLoading: false,
+            autoClose: 3000,
+          });
+          setBlur(false);
+        }
+        //assign response data to state "posts"
+        setDatasPembelian(pembelian);
+        setDatasPengiriman(pengiriman);
+        //
+        setDatasPemBarang(pemBarang);
+        setDatasPengBarang(pengBarang);
+        //
+        setBbnKardus(resbbnKardus);
+        // Uang
+        setUang(RupiahFormat(saldoBe));
+        setTtlBebanLain(totalBebanLain);
+        // jumlah cash
+        const resTotalPembelianCash = pembelian.reduce((total, item) => {
+          return total + Number(item.ttlPembelianCash)
+        }, 0);
+        setGrandTotalPembelianCash(resTotalPembelianCash);
+        setSisaUang(saldoBe - (resTotalPembelianCash + totalBebanLain));
+
+      } catch (error) {
+        alert(error.message)
       }
-      //assign response data to state "posts"
-      setDatasPembelian(pembelian);
-      setDatasPengiriman(pengiriman);
-      //
-      setDatasPemBarang(pemBarang);
-      setDatasPengBarang(pengBarang);
-      //
-      setBbnKardus(resbbnKardus);
     };
     fectData();
   }, [suplier_tgl]);
@@ -115,6 +135,67 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
   let ttl_pembelian = 0;
   let ttl_pengiriman = 0;
   let selisih = 0;
+  // Uang
+  const generateID = (dateString) => {
+    const date = new Date(dateString);
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+
+    return `${day}${month}${year}`;
+  };
+  const [sisaUang, setSisaUang] = useState(0);
+  // 
+  const toNumber = (str) => {
+    return Number(str.replace(/[^0-9]/g, ""));
+  };
+  const handleUang = (val) => {
+    const uangVal = toNumber(val.target.value);
+    const uangValRupiah = RupiahFormat(uangVal);
+    setUang(uangValRupiah);
+    setSisaUang(uangVal - (grandTotalPembelianCash + ttlBebanLain));
+  }
+  // simpan uang
+  const simpanModal = async () => {
+    const toastSaldo = toast.loading("Update Saldo");
+    if (uang !== null) {
+      try {
+        const formData = {
+          saldo_val: toNumber(uang),
+          saldo_id: generateID(suplier_tgl),
+        }
+        const response = await api.post("/update-saldo", formData, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`, // Sisipkan token di header
+            "Content-Type": "application/json",
+          },
+        });
+        toast.update(toastSaldo, {
+          render: response.data.message,
+          type: "success",
+          isLoading: false,
+          autoClose:2000,
+        });
+      } catch (error) {
+        console.log(error.message)
+        toast.update(toastSaldo, {
+          render: error.message,
+          type: "error",
+          isLoading: false,
+          autoClose:2000,
+        });
+      }
+    } else {
+      toast.update(toastSaldo, {
+        render: "Saldo belum diisi",
+        type: "error",
+        isLoading: false,
+        autoClose: 1000,
+      });
+    }
+  }
   // let resSelisih = 0;
   if (!isOpen) return null;
   // console.log(datasPengiriman);
@@ -130,38 +211,88 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
         </div>
         <div className="h-[2px] w-full bg-colorBlue"></div>
         <div className="w-full h-[85%] overflow-auto text-sm md:text-md">
-          <table className="font-poppins font-semibold w-full md:w-1/4 my-3">
-            <tr>
-              <td className="w-[25%]">Pengiriman</td>
-              <td className="w-[5%]">:</td>
-              <td className="text-blue-600 w-[70%] text-right">
-                {RupiahFormat(grandTotalPengiriman)}
-              </td>
-            </tr>
-            <tr>
-              <td className="w-[25%]">Modal</td>
-              <td className="w-[5%]">:</td>
-              <td className="text-green-600 w-[70%] text-right">
-                {RupiahFormat(
-                  parseInt(grandTotalPembelian) +
-                    parseInt(granTtlBeban) +
-                    parseInt(bbnKardus)
-                )}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="3">
-                <hr className="fill-black" />
-              </td>
-            </tr>
-            <tr>
-              <td className="w-[25%]">Laba / Rugi</td>
-              <td className="w-[5%]">:</td>
-              <td className="text-red-600 w-[70%] text-right">
-                {RupiahFormat(laba)}
-              </td>
-            </tr>
-          </table>
+          <div className="md:grid md:grid-cols-2 my-3 gap-3">
+            <table className="font-poppins font-semibold w-full md:w-1/2">
+              <tr>
+                <td className="w-[30%]">Pengiriman</td>
+                <td className="w-[5%]">:</td>
+                <td className="text-blue-600 w-[65%] text-right">
+                  {RupiahFormat(grandTotalPengiriman)}
+                </td>
+              </tr>
+              <tr>
+                <td className="w-[25%]">Modal</td>
+                <td className="w-[5%]">:</td>
+                <td className="text-green-600 w-[70%] text-right">
+                  {RupiahFormat(
+                    parseInt(grandTotalPembelian) +
+                      parseInt(granTtlBeban) +
+                      parseInt(bbnKardus)
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan="3">
+                  <hr className="fill-black" />
+                </td>
+              </tr>
+              <tr>
+                <td className="w-[25%]">Laba / Rugi</td>
+                <td className="w-[5%]">:</td>
+                <td className="text-red-600 w-[70%] text-right">
+                  {RupiahFormat(laba)}
+                </td>
+              </tr>
+            </table>
+            <hr className="my-4 md:hidden" />
+            <div className="flex gap-4">
+              <table className="font-poppins font-semibold w-full md:w-1/2">
+                <tr>
+                  <td className="w-[55%]">Uang Hari Ini</td>
+                  <td className="w-[5%]">:</td>
+                  <td className="text-end">
+                    <input type="text" 
+                    className="w-full p-1 border border-1 text-end text-blue-500"
+                    onChange={ (val) => handleUang(val) }
+                    value={uang}
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="">Pembelian (Cash)</td>
+                  <td className="">:</td>
+                  <td className="text-red-600 w-[70%] text-right">
+                    -{RupiahFormat(grandTotalPembelianCash)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="">Ops Lainnya</td>
+                  <td className="">:</td>
+                  <td className="text-red-600 w-[70%] text-right">
+                    -{RupiahFormat(ttlBebanLain)}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan="3">
+                    <hr className="fill-black" />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="">Sisa Uang</td>
+                  <td className="">:</td>
+                  <td className="text-green-600 w-[70%] text-right">
+                    {RupiahFormat(sisaUang)}
+                  </td>
+                </tr>
+              </table>
+              <div className="font-poppins font-semibold hidden md:block">
+                <i onClick={() => simpanModal()} className="cursor-pointer bg-colorBlue p-2 text-white rounded-sm fa fa-save"></i> Simpan
+              </div>
+            </div>
+            <div className="md:hidden text-right w-full md:w-1/2">
+              <i onClick={() => simpanModal()} className=" cursor-pointer bg-colorBlue p-2 text-white rounded-sm fa fa-save"></i>
+            </div>
+          </div>
           <div className="w-full h-fit xl:grid xl:grid-cols-2 gap-3">
             <div className="w-full">
               {/* <hr className="bg-colorBlue py-[1px] my-3" /> */}
@@ -192,6 +323,8 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
                       item.listPembelian["0"]["pembelian_harga"];
                     const total_pertama =
                       item.listPembelian["0"]["pembelian_total"];
+                    const pembayaran_pertama =
+                      item.listPembelian["0"]["pembayaran"];
                     return (
                       <>
                         <tr
@@ -221,7 +354,7 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
                           <td className="border border-black px-1 text-right">
                             {RupiahFormat(pembelian_harga)}
                           </td>
-                          <td className="border border-black px-1 text-right">
+                          <td className={`border border-black px-1 text-right ${pembayaran_pertama == 'cash' ? 'bg-green-500 text-white' : ''}`}>
                             {RupiahFormat(total_pertama)}
                           </td>
                           <td
@@ -259,7 +392,7 @@ function ModalLaporan({ isOpen, onClose, suplier_tgl }) {
                                     <td className="border border-black px-1 text-right">
                                       {RupiahFormat(pem.pembelian_harga)}
                                     </td>
-                                    <td className="border border-black px-1 text-right">
+                                    <td className={`border border-black px-1 text-right ${pem.pembayaran == 'cash' ? 'bg-green-500 text-white' : ''}`}>
                                       {RupiahFormat(pem.pembelian_total)}
                                     </td>
                                   </tr>
