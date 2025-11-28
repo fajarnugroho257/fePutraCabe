@@ -17,8 +17,8 @@ function Login() {
       username: usermail,
       password: password,
     };
-    // const endPoint = "https://sameeramart.com/be-putra-cabe/fe/api/login-api";
-    const endPoint = "http://127.0.0.1:8000/fe/api/login-api";
+    const endPoint = "https://putracabe.com/admin-data/api/login-api";
+    // const endPoint = "http://127.0.0.1:8000/api/login-api";
     // login
     try {
       const response = await fetch(endPoint, {

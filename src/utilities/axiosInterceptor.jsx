@@ -2,8 +2,8 @@ import axios from "axios";
 
 // Instance Axios
 const api = axios.create({
-  // baseURL: "https://sameeramart.com/be-putra-cabe/api/fe", // Ganti dengan URL backend Anda
-  baseURL: "http://127.0.0.1:8000/api/fe", // Ganti dengan URL backend Anda
+  baseURL: "https://putracabe.com/admin-data/api", // Ganti dengan URL backend Anda
+  // baseURL: "http://127.0.0.1:8000/api", // Ganti dengan URL backend Anda
 });
 
 // Interceptor untuk menangani error
