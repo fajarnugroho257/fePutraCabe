@@ -46,95 +46,91 @@ function ModalPreviewPembelian({ isOpen, onClose, pengiriman_id }) {
   }, [pengiriman_id]);
   //
   const handlePrint = async () => {
-    try {
-      // ESC/POS Commands
-      const ESC = "\x1B";
-      const fontSmall = `${ESC}!\x01`; // Ukuran font kecil
-      const fontNormal = `${ESC}!\x00`; // Ukuran font normal
+  try {
+    // Fungsi kirim data per-chunk
+    const sendInChunks = async (characteristic, buffer) => {
+      const CHUNK = 500; // aman < 512
+      for (let i = 0; i < buffer.length; i += CHUNK) {
+        const chunk = buffer.slice(i, i + CHUNK);
+        await characteristic.writeValue(chunk);
+        await new Promise((res) => setTimeout(res, 30)); // delay sedikit
+      }
+    };
 
-      // Data nota
-      const tanggal = FormatTanggal(dataSuplier.pengiriman_tgl);
-      const items = dataPembelian;
-      const currentDateTime = getCurrentDateTime(); // Ambil tanggal dan jam sekarang
-      //   console.log(supplier);
-      //   console.log(tanggal);
-      //   console.log(items);
-      const grandTotal = items.reduce(
-        (sum, item) => sum + parseInt(item.data_total),
-        0
-      );
+    // ESC/POS Commands
+    const ESC = "\x1B";
+    const fontSmall = `${ESC}!\x01`; 
+    const fontNormal = `${ESC}!\x00`;
 
-      // Format kolom
-      const columnWidths = [6, 5, 8, 7]; // Lebar kolom untuk nama, tonase, dan harga
+    const tanggal = FormatTanggal(dataSuplier.pengiriman_tgl);
+    const items = dataPembelian;
+    const currentDateTime = getCurrentDateTime();
 
-      // Format header
-      const header =
-        `${fontSmall}` + // Atur font kecil
-        "Putra Cabe\n------------------------\n" +
-        `Tanggal     : ${tanggal}\n` +
-        `Nota Cetak  : ${currentDateTime[0]}\n` + // Tambahkan tanggal dan jam sekarang
-        `Nota Jam    : ${currentDateTime[1]}\n` + // Tambahkan tanggal dan jam sekarang
-        "-------------------------------\n" +
-        formatRow(["Brg", "Ton", "Harga", "Total"], columnWidths) +
-        "\n" +
-        "-------------------------------\n";
+    const grandTotal = items.reduce(
+      (sum, item) => sum + (parseInt(item.data_total) || 0),
+      0
+    );
 
-      // Format isi tabel
-      const rows = items
-        .map((item) =>
-          formatRow(
-            [
-              item.data_merek,
-              item.data_tonase.toString(),
-              formatRupiah(parseInt(item.data_harga)),
-              formatRupiah(parseInt(item.data_total)),
-            ],
-            columnWidths
-          )
+    const columnWidths = [6, 5, 8, 7];
+
+    const header =
+      `${fontSmall}` +
+      "Putra Cabe\n------------------------\n" +
+      `Tanggal     : ${tanggal}\n` +
+      `Nota Cetak  : ${currentDateTime[0]}\n` +
+      `Nota Jam    : ${currentDateTime[1]}\n` +
+      "-------------------------------\n" +
+      formatRow(["Brg", "Ton", "Harga", "Total"], columnWidths) +
+      "\n-------------------------------\n";
+
+    const rows = items
+      .map((item) =>
+        formatRow(
+          [
+            item.data_merek,
+            item.data_tonase.toString(),
+            formatRupiah(parseInt(item.data_harga) || 0),
+            formatRupiah(parseInt(item.data_total) || 0),
+          ],
+          columnWidths
         )
-        .join("\n");
+      )
+      .join("\n");
 
-      // Format footer
-      const footer =
-        "-------------------------------\n" +
-        formatRow(["Gr Tot", "", "", formatRupiah(grandTotal)], columnWidths) +
-        "\n-------------------------------\n\n";
+    const footer =
+      "-------------------------------\n" +
+      formatRow(["Gr Tot", "", "", formatRupiah(grandTotal)], columnWidths) +
+      "\n-------------------------------\n\n";
 
-      // Gabungkan semuanya
-      // const nota = header + rows + "\n" + footer;
-      const nota =
-        `${fontSmall}` + header + rows + "\n" + footer + `${fontSmall}`; // Kembalikan ke font normal jika perlu
+    // Gabungkan semua
+    const nota = `${fontSmall}` + header + rows + "\n" + footer + `${fontSmall}`;
 
-      console.log(nota); // Debug: lihat output di konsol
+    console.log(nota);
 
-      // Kirim ke printer thermal
-      const printData = new TextEncoder().encode(nota);
+    const printData = new TextEncoder().encode(nota);
 
-      // Hubungkan ke perangkat Bluetooth
-      const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ["000018f0-0000-1000-8000-00805f9b34fb"],
-      });
+    // Koneksi BLE
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: ["000018f0-0000-1000-8000-00805f9b34fb"],
+    });
 
-      console.log("Perangkat ditemukan:", device.name);
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(
+      "000018f0-0000-1000-8000-00805f9b34fb"
+    );
+    const characteristic = await service.getCharacteristic(
+      "00002af1-0000-1000-8000-00805f9b34fb"
+    );
 
-      const server = await device.gatt.connect();
-      const service = await server.getPrimaryService(
-        "000018f0-0000-1000-8000-00805f9b34fb"
-      );
-      const characteristic = await service.getCharacteristic(
-        "00002af1-0000-1000-8000-00805f9b34fb"
-      );
+    // **FIX: KIRIM DATA DALAM CHUNK**
+    await sendInChunks(characteristic, printData);
 
-      // Kirim data ke printer
-      await characteristic.writeValue(printData);
-
-      console.log("Nota berhasil dicetak.");
-    } catch (error) {
-      console.error("Gagal mencetak nota:", error);
-    }
-    // console.log(response);
-  };
+    console.log("Nota berhasil dicetak.");
+  } catch (error) {
+    console.error("Gagal mencetak nota:", error);
+  }
+};
 
   function getCurrentDateTime() {
     const now = new Date();
@@ -201,7 +197,8 @@ function ModalPreviewPembelian({ isOpen, onClose, pengiriman_id }) {
             <tbody>
               {dataPembelian &&
                 dataPembelian.map((value, index) => {
-                  grand_total += parseInt(value.data_total);
+                  console.log(parseInt(value.data_total ?? 0));
+                  grand_total += parseInt(value.data_total ?? 0);
                   return (
                     <tr>
                       <td className="border border-black py-1 px-2">
