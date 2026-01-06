@@ -45,7 +45,7 @@ function Login() {
       <div className="hidden bg-colorBlue md:block">
         <div className="h-screen flex items-center justify-center">
           <div>
-            <img src={putraCabe} alt="putraCabe" className="w-56 mx-auto" />
+            <img src='/putraCabe.png' alt="putraCabe" className="w-56 mx-auto" />
             <h4 className="text-colorGray font-poppins text-4xl font-semibold text-center">
               Putra Cabe
             </h4>
