@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { setToken } from "../utilities/Auth";
-import quick from "../assets/img/calculator_6655639.png";
+import putraCabe from "../assets/img/putraCabe.png";
 function Login() {
   localStorage.setItem("page", "login");
   const [usermail, setUsermail] = useState("");
@@ -45,7 +45,7 @@ function Login() {
       <div className="hidden bg-colorBlue md:block">
         <div className="h-screen flex items-center justify-center">
           <div>
-            <img src={quick} alt="quick" className="w-56 mx-auto" />
+            <img src={putraCabe} alt="putraCabe" className="w-56 mx-auto" />
             <h4 className="text-colorGray font-poppins text-4xl font-semibold text-center">
               Putra Cabe
             </h4>
